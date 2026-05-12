@@ -1,0 +1,428 @@
+# Schema canônico do manifest YAML co-publicado com a auditoria MD.
+# Validável via Pydantic v2 cond.
+# Skill: tracking-blackbox-auditor v1.0.0
+# Cutoff temporal: estado-da-arte 2026 (D-AUDITORES-6)
+
+# ====================================================================
+# Frontmatter — Metadados da execução
+# ====================================================================
+
+schema_id: auditoria-tracking-blackbox
+schema_version: 1.0.0
+schema_template_revision: 2026-05-11
+
+# ====================================================================
+# Identificação do alvo + execução
+# ====================================================================
+
+target_url: string                           # URL auditada (required)
+target_slug: string                          # slug pra path canônico (required)
+data_auditoria: ISO-8601                     # YYYY-MM-DD HH:MM:SS (required)
+tempo_execucao_minutos: integer              # (required)
+operador: string                             # nome do operador (required)
+cliente: string                              # nome do cliente OR 'standalone-{slug}' (required)
+
+# ====================================================================
+# Modo + cobertura
+# ====================================================================
+
+modo: enum [lp, site, ecommerce]             # mutuamente exclusivo (required) — D-AUDITORES-1
+modelo_negocio: enum                         # cond. modo lp
+  - b2b-leadgen                              # default lp
+  - b2c-ticket-alto                          # clínicas premium, escolas privadas, planos saúde
+  - b2c-consumer                             # consumer ticket baixo
+  - ecommerce                                # quando modo=ecommerce
+  - plg-saas                                 # PLG SaaS
+
+nivel_acesso_max: integer 1-9                # maior nível de acesso utilizado (required) — D-AUDITORES-7
+
+flags_acesso_usadas: list[string]            # subset de:
+  - gtm-export                               # Nível 2
+  - ga4-credentials                          # Nível 3
+  - meta-business-token                      # Nível 4
+  - google-ads-credentials                   # Nível 5
+  - linkedin-token                           # Nível 6
+  - tiktok-token                             # Nível 7
+  - clarity-project-id                       # Nível 8
+  - server-logs-path                         # Nível 9
+  - cdp-token                                # Nível 9 alternativa
+
+flags_extras_usadas: list[string]            # subset de:
+  - cwv                                      # Lighthouse CWV via PerformanceObserver
+  - lgpd-scan                                # Cookie scanner LGPD profundo
+  - browsers-multi                           # Cross-browser cond.
+  - measurement-plan                         # Auditoria híbrida
+  - render-reveal                            # Reveal.js HTML render
+
+# ====================================================================
+# Cutoff temporal + versionamento
+# ====================================================================
+
+cutoff_rubrica: string                       # "estado-da-arte 2026" (required) — D-AUDITORES-6
+versao_skill: string                         # "1.0.0" (required)
+
+# ====================================================================
+# Resultados — scores + categoria + confidence global
+# ====================================================================
+
+nota_final: number 0-10                      # ponderada (required)
+categoria: enum                              # (required)
+  - estado-da-arte                           # 9.0-10
+  - maduro                                   # 7.0-8.9
+  - funcional                                # 5.0-6.9
+  - subdesenvolvido                          # 3.0-4.9
+  - inexistente                              # 0-2.9
+
+confidence_global: enum [alta, media, baixa] # (required)
+
+# ====================================================================
+# Scores por dimensão
+# ====================================================================
+
+scores_por_dimensao:                         # 10 entries (D1-D10) + cond. D11 + cond. D9 só ecommerce
+  D1:
+    nome: "Stack instalada vs benchmark"
+    score: number 0-10                       # (required)
+    peso: number 0-1                         # decimal correspondente ao % do modo (ex: 0.12 = 12%)
+    ponderado: number                        # score × peso
+    confidence: enum [alta, media, baixa]    # (required)
+    justificativa: string                    # 1 parágrafo
+    sub_criterios_detalhados: list[object]   # opcional — sub-criterios + scores individuais
+
+  D2:
+    nome: "DataLayer schema quality"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+
+  D3:
+    nome: "Cobertura de jornada (funnel coverage)"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+
+  D4:
+    nome: "Identity & Hash Policy (LGPD-aware)"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    sub_score_hash_nao_trafega: boolean      # ⭐ refinamento Aquatro
+
+  D5:
+    nome: "EMQ Meta estimado"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    emq_estimado: number 0-10                # valor EMQ estimado via fórmula
+    emq_target: number 0-10                  # target canônico (≥7.0 Lead / ≥8.8 Purchase)
+
+  D6:
+    nome: "Dedup CAPI prontidão"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    server_side_inference_pattern: enum      # cond. detectado
+      - stape_pattern
+      - cloud_run
+      - n8n_webhook
+      - cname_cloaking
+      - none
+
+  D7:
+    nome: "Click IDs capture & persistence"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    click_ids_capturados: list[string]       # subset de: gclid/fbclid/wbraid/gbraid/msclkid/ttclid/li_fat_id/dclid/epik
+    safari_itp_mitigation: boolean
+
+  D8:
+    nome: "Consent Mode v2 + LGPD compliance"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    banner_present: boolean
+    default_consent_state: enum [denied, granted, ausente]
+    consent_mode_v2_fields_present: boolean  # ad_user_data + ad_personalization
+    cosmetic_banner_detected: boolean        # ⭐ refinamento Aquatro
+    privacy_policy_linked: boolean
+
+  D9:                                        # cond. — só modo=ecommerce
+    nome: "Enhanced Ecommerce GA4"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    eventos_canonicos_capturados: list[string]  # subset de: view_item_list/select_item/view_item/add_to_cart/remove_from_cart/view_cart/begin_checkout/add_shipping_info/add_payment_info/purchase/refund
+    transaction_id_unico: boolean
+    currency_consistente: boolean
+
+  D10:
+    nome: "Tracking health + performance"
+    score: number 0-10
+    peso: number 0-1
+    ponderado: number
+    confidence: enum [alta, media, baixa]
+    justificativa: string
+    lcp_ms: number                           # Largest Contentful Paint (ms)
+    inp_ms: number                           # Interaction to Next Paint (ms) cond.
+    cls: number                              # Cumulative Layout Shift
+    console_errors_count: integer
+    network_failures_tracking_count: integer
+
+  D11:                                       # opcional informativa — não pondera score
+    nome: "Pipeline pós-LP"
+    confidence: enum [alta, media, baixa]
+    pattern_detectado: enum
+      - whatsapp_frictionless                # api.whatsapp.com/send/
+      - whatsapp_direct                      # wa.me/
+      - rd_station                           # rdstation.com/conversions/
+      - hubspot                              # forms.hubspot.com
+      - pipefy                               # pipefy.com
+      - kommo                                # kommo.com
+      - own_domain_redirect                  # /obrigado, /thank-you
+      - n8n_webhook                          # /webhook/...
+      - unknown
+    url_destino_observado: string
+
+# ====================================================================
+# Severidades canônicas + plano remediação
+# ====================================================================
+
+hard_blockers: list[object]                  # list of:
+  - codigo: string                           # ex: "HB.1"
+    achado: string
+    dimensao: string                         # D1-D11
+    tipo: enum [BLOCKER_LGPD, BLOCKER_TECNICO]
+    artigo_spec: string                      # ex: "LGPD Art. 8º + ANPD Guia Dark Patterns 2024"
+    impacto: string
+
+alta_severidade: list[object]                # mesmo schema acima — tipo: ALTA
+media_severidade: list[object]               # mesmo schema — tipo: MEDIA
+baixa_severidade: list[object]               # mesmo schema — tipo: BAIXA
+
+plano_remediacao:
+  P0:                                        # Blockers legais + técnicos críticos (semana-1)
+    - codigo: string                         # ex: "P0.1"
+      acao: string                           # descrição
+      dimensao: string
+      severidade: enum [BLOCKER_LGPD, BLOCKER_TECNICO]
+      artigo_spec: string
+      esforco_horas_min: integer
+      esforco_horas_max: integer
+      impacto: string
+      roi: enum [altissimo, alto, medio, baixo]
+      skill_responsavel: string              # ex: "tracking-engineer" OR "instrumentation-engineer"
+
+  P1:                                        # Alto ROI técnico (sprint-1)
+    - codigo: string
+      acao: string
+      dimensao: string
+      severidade: enum [ALTA, MEDIA]
+      esforco_horas_min: integer
+      esforco_horas_max: integer
+      impacto_quantificado: string           # ex: "EMQ +2-4 pontos → +20-40% attribution Meta"
+      roi: enum [altissimo, alto, medio, baixo]
+      skill_responsavel: string
+
+  P2:                                        # Refinamento (sprint-2+)
+    - codigo: string
+      acao: string
+      dimensao: string
+      severidade: enum [MEDIA, BAIXA]
+      esforco_horas_min: integer
+      esforco_horas_max: integer
+      impacto: string
+      skill_responsavel: string
+
+esforco_total_p0_horas: integer
+esforco_total_p1_horas: integer
+esforco_total_p2_horas: integer
+esforco_total_geral_horas: integer
+
+# ====================================================================
+# Inventário detectado
+# ====================================================================
+
+stack_detectado:
+  ga4:
+    presente: boolean
+    measurement_id: string                   # ex: "G-XXXXXXX"
+  gtm:
+    presente: boolean
+    container_id: string                     # ex: "GTM-XXXXX"
+  gtm_server_side:
+    presente: boolean
+    signature: string                        # stape_pattern / cloud_run / custom
+  meta_pixel:
+    presente: boolean
+    pixel_id: string
+  google_ads:
+    presente: boolean
+    aw_id: string
+  linkedin_insight:
+    presente: boolean
+    partner_id: string
+  tiktok_pixel:
+    presente: boolean
+    pixel_id: string
+  microsoft_uet:
+    presente: boolean
+    uet_id: string
+  microsoft_clarity:
+    presente: boolean
+    project_id: string
+  hotjar:
+    presente: boolean
+  fullstory:
+    presente: boolean
+  rd_station:
+    presente: boolean
+  hubspot:
+    presente: boolean
+  universal_analytics_deprecated:            # BLOCKER técnico se true
+    presente: boolean
+
+eventos_canonicos_capturados_jornada:        # core 13 events
+  - PageView
+  - CTAInteract
+  - FormStart
+  - Lead
+  # ... (mais cond. de modo)
+
+# ====================================================================
+# Handoffs canônicos
+# ====================================================================
+
+handoffs_canonicos:
+  - skill: string                            # ex: "measurement-architect"
+    quando: string                           # ex: "Fundação 1.3.2"
+    o_que_extrai: string
+
+# ====================================================================
+# Confidence indicator global
+# ====================================================================
+
+confidence_por_dimensao:                     # tabela completa
+  D1: enum [alta, media, baixa]
+  D2: enum [alta, media, baixa]
+  D3: enum [alta, media, baixa]
+  D4: enum [alta, media, baixa]
+  D5: enum [alta, media, baixa]
+  D6: enum [alta, media, baixa]
+  D7: enum [alta, media, baixa]
+  D8: enum [alta, media, baixa]
+  D9: enum [alta, media, baixa]              # cond. — só modo ecommerce
+  D10: enum [alta, media, baixa]
+  D11: enum [alta, media, baixa]             # opcional informativa
+
+upgrades_recomendados:                       # pra subir confidence global
+  - nivel: integer 2-9
+    flag: string                             # ex: "--gtm-export=<path>.json"
+    beneficia_dimensoes: list[string]        # ex: [D2, D3]
+
+# ====================================================================
+# Linkbacks
+# ====================================================================
+
+linkbacks_upstream:                          # URLs/credenciais consumidas (PREVIEW ANONIMIZADO)
+  - tipo: enum [url, gtm-export, ga4-admin, meta-business, google-ads, linkedin, tiktok, clarity, server-logs, cdp]
+    valor_preview: string                    # PREVIEW ANONIMIZADO — não credenciais em claro!
+
+linkbacks_downstream:                        # skills consumers + outputs esperados
+  - skill: string                            # ex: "measurement-architect"
+    output_esperado: string                  # ex: "measurement-plan.yml"
+    quando: string                           # ex: "Fundação 1.3.2"
+
+# ====================================================================
+# Meta-rubrica + limitações
+# ====================================================================
+
+meta_rubrica_refinamentos:                   # refinamentos detectados — alimentam pendência B7
+  - id: string                               # ex: "MR-2026-05-11-001"
+    descricao: string
+    proposta: string
+
+limitacoes_diagnostico: list[string]         # o que não foi possível auditar
+cenarios_nao_cobertos: list[string]          # jornadas não-testadas, state-based features, etc.
+
+# ====================================================================
+# Atributos cross-fase (D-MCP-16 + D-OPERADOR-1)
+# ====================================================================
+
+mcp_requerido_input: [playwright, filesystem]
+mcp_requerido_output: [filesystem]
+aplicacao_externa_destino:                   # cond.
+  - filesystem-vault                         # modo Fundação 1.3.2 / Fase 3
+  - cliente-acima-linha-visibilidade         # modo standalone comercial
+
+formato_output_principal: dual MD + HTML cond. + manifest YAML
+fallback_documentado: "Níveis aditivos 1-9 — Nível 1 só URL via Playwright sempre funciona"
+bibliotecas_consumidas: [playwright, pydantic-v2, hashlib, google-analytics-data-cond, facebook-business-cond, google-ads-cond, linkedin-api-cond, business-api-sdk-cond, pandoc-cond, revealjs-cond]
+mecanismos_claude_code:
+  - hooks-PostEdit-validate-rubrica-cutoff
+  - schedule-cron-cadencia-Fase3-Loop-trimestral-cond
+  - slash-command-promote-auditoria-pdf-cond
+
+# ====================================================================
+# Validações canônicas (V1-V14)
+# ====================================================================
+
+validacoes:
+  V1_output_12_secoes:
+    status: enum [pass, fail]                # critério done §8.1
+    severity: blocker
+  V2_nota_final_com_categoria:
+    status: enum [pass, fail]
+    severity: blocker
+  V3_3_highlights_executive_summary:
+    status: enum [pass, fail]
+    severity: alta
+  V4_confidence_por_dimensao:
+    status: enum [pass, fail]
+    severity: blocker
+  V5_severidades_mapeadas_artigo_legal:
+    status: enum [pass, fail]
+    severity: blocker
+  V6_plano_p0_p1_p2_priorizado_roi:
+    status: enum [pass, fail]
+    severity: blocker
+  V7_handoffs_canonicos_definidos:
+    status: enum [pass, fail]
+    severity: alta
+  V8_frontmatter_completo_cutoff:
+    status: enum [pass, fail]
+    severity: blocker
+  V9_confidence_alta_nivel_1_em_D5_recusada:
+    status: enum [pass, fail]
+    severity: alta
+  V10_modo_ecommerce_exige_D9:
+    status: enum [pass, fail]
+    severity: blocker
+  V11_modo_lp_calibra_pesos_modelo:
+    status: enum [pass, fail]
+    severity: alta
+  V12_lcp_via_performance_observer:
+    status: enum [pass, fail]
+    severity: media
+  V13_hash_verification_test_sintetico:
+    status: enum [pass, fail]
+    severity: alta
+  V14_browser_network_requests_redundancia:
+    status: enum [pass, fail]
+    severity: blocker                        # D-AUDITORES-5

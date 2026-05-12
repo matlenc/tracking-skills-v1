@@ -1,0 +1,128 @@
+<!--
+  TEMPLATE CANÔNICO — TAG GTM "TAG | Meta | CAPI Forwarder"
+  ============================================================
+  Tipo no GTM: HTML Customizado
+  Triggers: TRG | Custom Event | Lead, MQL, NOICP (cada um com Event = nome exato)
+
+  PROPRIEDADES NÃO-ÓBVIAS DOCUMENTADAS INLINE:
+
+  1. Defense in depth (3 camadas) — guard JS no início + trigger filter no GTM + allowlist no servidor.
+     Se UMA camada falhar (ex: alguém muda trigger pra "All Custom Events"), as outras seguram.
+
+  2. sendBeacon com STRING, NÃO Blob 'application/json' — Blob com type non-simple dispara
+     CORS preflight, que sendBeacon não suporta. Request é dropado silenciosamente, sem erro JS.
+
+  3. PII em texto plano — N8N hasheia SHA-256 antes do Meta. Hashear no browser exigiria
+     CryptoJS de ~30KB sem ROI vs server-side.
+
+  4. fbp/fbc/UA NÃO hasheados — Meta usa raw nesses campos.
+
+  ANTES DE PUBLICAR, AJUSTAR:
+  - Lista de eventos canônicos no Guard 1 (line ~30) — manter consistente com triggers do projeto
+  - Variáveis DLV/CJS referenciadas devem existir no workspace (ver guias/gtm-config-reference.md §2.2.5)
+  - Variável [EDIT] Perma | Meta CAPI Endpoint criada como Constant com valor inicial __SET_ME__
+-->
+<script>
+(function(){
+  // ============================================================
+  // GUARD 1 — eventos canônicos (defense in depth, camada 1)
+  // ============================================================
+  // Necessário porque triggers Custom Event configurados como "All Custom Events"
+  // (anti-pattern comum em containers herdados) disparam em gtm.init/dom/js/load.
+  // Mesmo que o trigger esteja correto, mantém este guard como rede de segurança.
+  var evt = {{Event}};
+  if (evt !== 'Lead' && evt !== 'MQL' && evt !== 'NOICP') return;
+
+  // ============================================================
+  // GUARD 2 — endpoint configurado (deploy seguro)
+  // ============================================================
+  // Variável Constant com valor default '__SET_ME__'. Operador troca pela URL real
+  // do webhook N8N/SGTM após criar o workflow. Sem esse guard, tag dispara
+  // fetch('__SET_ME__', ...) e gera 404 nos logs do operador.
+  var endpoint = {{[EDIT] Perma | Meta CAPI Endpoint}};
+  if (!endpoint || endpoint === '__SET_ME__') return;
+
+  function getCookie(n){
+    var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  // ============================================================
+  // USER DATA — PII em texto plano (N8N hasheia SHA-256)
+  // ============================================================
+  var ud = {};
+  var em = {{DLV | user.email}};
+  var ph = {{CJS | Meta | Phone Digits}};   // Custom JS: dígitos puros sem '+' (formato Meta)
+  var fn = {{DLV | user.first_name}};
+  var ln = {{DLV | user.last_name}};
+  var ct = {{CJS | Meta | City Normalized}}; // Custom JS: lowercase, sem espaços, sem acentos
+  var st = {{CJS | Meta | State Lowercase}};
+  var zp = {{CJS | Meta | Postal Code Digits}};
+  var extId = {{CJS | Meta | External ID}};
+
+  if (em) ud.em = String(em).toLowerCase().trim();
+  if (ph) ud.ph = ph;
+  if (fn) ud.fn = String(fn).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,'');
+  if (ln) ud.ln = String(ln).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,'');
+  if (ct) ud.ct = ct;
+  if (st) ud.st = st;
+  if (zp) ud.zp = zp;
+  if (extId) ud.external_id = extId;
+  ud.country = {{Const | Meta | Country}};
+
+  // ============================================================
+  // fbp/fbc/UA — Meta usa raw, NÃO hasheia
+  // ============================================================
+  var fbp = getCookie('_fbp');
+  var fbc = getCookie('_fbc');
+  if (fbp) ud.fbp = fbp;
+  if (fbc) ud.fbc = fbc;
+  ud.client_user_agent = navigator.userAgent;
+
+  // ============================================================
+  // PAYLOAD — usa 'evt' (já validado pelo Guard 1) em vez de chamar {{Event}} de novo
+  // ============================================================
+  var payload = {
+    event_name: evt,
+    event_id: {{DLV | event_id}},
+    event_time: Math.floor(Date.now() / 1000),
+    event_source_url: window.location.href,
+    action_source: 'website',
+    user_data: ud,
+    custom_data: {
+      lead_status: {{DLV | lead_status}},
+      person_type: {{DLV | person_type}},
+      qualification_rule: {{DLV | qualification_rule}},
+      qualification_reason: {{DLV | qualification_reason}}
+    }
+  };
+
+  var body = JSON.stringify(payload);
+
+  // ============================================================
+  // ENVIO — sendBeacon com STRING (Content-Type text/plain, simple request)
+  // ============================================================
+  // CRÍTICO: passar string direto, NUNCA new Blob([body], {type: 'application/json'}).
+  // Blob com type 'application/json' é "non-simple Content-Type" → browser tenta CORS
+  // preflight → sendBeacon NÃO suporta preflight → request descartado silenciosamente.
+  // Com string, Content-Type vira text/plain;charset=UTF-8 (simple request) → sem preflight.
+  // O servidor (N8N/SGTM Code node) faz JSON.parse(body) — pattern documentado no
+  // workflow template em templates/n8n-workflow-meta-capi.json.
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(endpoint, body);
+    } else {
+      // Fallback raro (browsers muito antigos). keepalive: true mantém request vivo
+      // mesmo se a página descarregar (form submit + redirect).
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body,
+        keepalive: true
+      });
+    }
+  } catch (e) {
+    console.warn('[CAPI Forwarder]', e);
+  }
+})();
+</script>

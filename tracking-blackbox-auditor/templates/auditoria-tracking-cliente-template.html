@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico de Tracking — {{cliente}}</title>
+
+<!-- Reveal.js CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css" id="theme">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+
+<style>
+  :root {
+    --r-main-color: #f0f0f0;
+    --r-heading-color: #ffffff;
+    --r-background-color: #1a1814;
+    --r-link-color: #E50914;
+    --r-accent-yellow: #FFDD00;
+    --r-accent-red: #E50914;
+    --r-accent-green: #00C896;
+    --r-accent-amber: #FFB800;
+  }
+  .reveal { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+  .reveal h1, .reveal h2, .reveal h3 { font-weight: 700; letter-spacing: -0.02em; }
+  .reveal h1 { font-size: 2.5em; }
+  .reveal h2 { font-size: 1.8em; }
+  .reveal h3 { font-size: 1.3em; }
+  .reveal section.title-slide h1 { color: var(--r-accent-yellow); }
+  .reveal table { font-size: 0.6em; }
+  .reveal table th { background: var(--r-accent-red); color: #fff; }
+  .reveal table td.red { background: rgba(229, 9, 20, 0.2); color: #ff7070; }
+  .reveal table td.yellow { background: rgba(255, 184, 0, 0.2); color: #ffd54f; }
+  .reveal table td.green { background: rgba(0, 200, 150, 0.2); color: #4dd9b3; }
+  .reveal .nota-final { font-size: 4em; color: var(--r-accent-yellow); text-align: center; }
+  .reveal .categoria { font-size: 1.5em; color: var(--r-accent-green); text-align: center; margin-bottom: 30px; }
+  .reveal blockquote { border-left: 4px solid var(--r-accent-red); padding-left: 20px; font-style: italic; }
+  .reveal .badge-blocker { background: var(--r-accent-red); color: #fff; padding: 4px 12px; border-radius: 4px; font-weight: 700; }
+  .reveal .badge-alta { background: var(--r-accent-amber); color: #1a1814; padding: 4px 12px; border-radius: 4px; font-weight: 700; }
+  .reveal .badge-media { background: rgba(255, 184, 0, 0.5); color: #fff; padding: 4px 12px; border-radius: 4px; }
+  .reveal .badge-baixa { background: rgba(150, 150, 150, 0.5); color: #fff; padding: 4px 12px; border-radius: 4px; }
+  .reveal .footer { position: fixed; bottom: 10px; left: 30px; font-size: 0.5em; color: rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============ SLIDE 1: TITLE ============ -->
+<section class="title-slide" data-background-color="#1a1814">
+  <h1>Diagnóstico de Tracking</h1>
+  <h2 style="color: #fff; margin-top: 30px;">{{cliente}}</h2>
+  <p style="margin-top: 60px; font-size: 0.6em; opacity: 0.7;">{{target_url}}</p>
+  <p style="margin-top: 30px; font-size: 0.5em; opacity: 0.5;">{{data}} · {{nome_operador}}</p>
+</section>
+
+<!-- ============ SLIDE 2: NOTA + CATEGORIA ============ -->
+<section data-background-color="#1a1814">
+  <h2>Estado Atual</h2>
+  <div class="nota-final">{{nota_final}}/10</div>
+  <div class="categoria">{{categoria}}</div>
+  <p style="text-align: center; font-size: 0.7em; opacity: 0.7;">
+    Avaliação contra rubrica universal canônica <strong>estado-da-arte 2026</strong>
+  </p>
+</section>
+
+<!-- ============ SLIDE 3: O QUE SIGNIFICA ============ -->
+<section data-background-color="#1a1814">
+  <h2>O Que Isso Significa</h2>
+  <blockquote style="margin-top: 40px;">
+    {{1-2 frases cliente-facing traduzindo nota+categoria pra impacto de negócio}}
+  </blockquote>
+  <ul style="margin-top: 40px;">
+    <li><span class="badge-blocker">{{hard_blockers_count}}</span> hard blockers detectados</li>
+    <li><span class="badge-alta">{{alta_severidade_count}}</span> alta severidade técnica</li>
+    <li style="margin-top: 20px;">Confidence global da auditoria: <strong>{{alta/media/baixa}}</strong></li>
+  </ul>
+</section>
+
+<!-- ============ SLIDE 4: 3 HIGHLIGHTS ============ -->
+<section data-background-color="#1a1814">
+  <h2>3 Destaques</h2>
+  <div style="margin-top: 40px;">
+    <h3 style="color: var(--r-accent-green);">🟢 O que tá bom</h3>
+    <p>{{achado_positivo_traduzido}}</p>
+  </div>
+  <div style="margin-top: 30px;">
+    <h3 style="color: var(--r-accent-red);">🔴 Atenção imediata</h3>
+    <p>{{achado_critico_traduzido}}</p>
+  </div>
+  <div style="margin-top: 30px;">
+    <h3 style="color: var(--r-accent-amber);">🟡 Oportunidade</h3>
+    <p>{{achado_atenção_traduzido}}</p>
+  </div>
+</section>
+
+<!-- ============ SLIDE 5: 10 DIMENSÕES ============ -->
+<section data-background-color="#1a1814">
+  <h2>10 Dimensões Avaliadas</h2>
+  <table>
+    <thead><tr><th>Dimensão</th><th>Score</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>D1 Stack instalada</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D2 DataLayer schema</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D3 Cobertura jornada</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D4 Identidade & Hash</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D5 EMQ Meta</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D6 Dedup CAPI</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D7 Click IDs</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D8 Consent + LGPD</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+      <tr><td>D9 Ecommerce GA4</td><td>{{score/—}}/10</td><td>{{🟢/🟡/🔴/—}}</td></tr>
+      <tr><td>D10 Tracking health</td><td>{{score}}/10</td><td>{{🟢/🟡/🔴}}</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ SLIDE 6: HARD BLOCKERS ============ -->
+<section data-background-color="#1a1814">
+  <h2 style="color: var(--r-accent-red);">Hard Blockers</h2>
+  <p style="opacity: 0.7;">{{hard_blockers_count}} blockers identificados — risco LGPD + técnico crítico</p>
+  <table style="margin-top: 30px;">
+    <thead><tr><th>Achado</th><th>Severidade</th><th>Artigo/Spec</th></tr></thead>
+    <tbody>
+      <tr><td>{{achado-1}}</td><td><span class="badge-blocker">BLOCKER LGPD</span></td><td>Art. {{Nº}}</td></tr>
+      <tr><td>{{achado-2}}</td><td><span class="badge-blocker">BLOCKER técnico</span></td><td>{{spec}}</td></tr>
+      <tr><td>...</td><td>...</td><td>...</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ SLIDE 7: RISCOS LGPD ============ -->
+<section data-background-color="#1a1814">
+  <h2 style="color: var(--r-accent-red);">Riscos LGPD</h2>
+  <blockquote>
+    Multa LGPD até <strong>2% do faturamento</strong>, máximo <strong>R$ 50 milhões/violação</strong>.
+    ANPD virou agência reguladora em 2025 — fiscalização ativa em 2026-2027.
+  </blockquote>
+  <ul style="margin-top: 30px;">
+    <li>Tema Prioritário ANPD 2026-2027 #1: <strong>Direitos dos titulares (Art. 18)</strong></li>
+    <li>Status atual do seu setup: <strong>{{alto/médio/baixo risco}}</strong></li>
+    <li>Blockers LGPD detectados: <strong>{{N}}</strong></li>
+  </ul>
+</section>
+
+<!-- ============ SLIDE 8: PLANO P0 ============ -->
+<section data-background-color="#1a1814">
+  <h2 style="color: var(--r-accent-red);">P0 — Próximos 7 dias</h2>
+  <p style="opacity: 0.7;">Blockers legais + técnicos críticos</p>
+  <table>
+    <thead><tr><th>Ação</th><th>Esforço</th><th>Impacto</th></tr></thead>
+    <tbody>
+      <tr><td>{{P0.1}}</td><td>{{X-Y h}}</td><td>Risco multa evitado</td></tr>
+      <tr><td>{{P0.2}}</td><td>{{X-Y h}}</td><td>{{impacto}}</td></tr>
+      <tr><td>...</td><td>...</td><td>...</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 30px;">Esforço total P0: <strong>{{X-Y h}}</strong></p>
+</section>
+
+<!-- ============ SLIDE 9: PLANO P1 ============ -->
+<section data-background-color="#1a1814">
+  <h2 style="color: var(--r-accent-amber);">P1 — Sprint-1 (~30 dias)</h2>
+  <p style="opacity: 0.7;">Alto ROI técnico</p>
+  <table>
+    <thead><tr><th>Ação</th><th>Esforço</th><th>Impacto quantificado</th></tr></thead>
+    <tbody>
+      <tr><td>{{P1.1}}</td><td>{{X-Y h}}</td><td>{{Impacto canônico}}</td></tr>
+      <tr><td>{{P1.2}}</td><td>{{X-Y h}}</td><td>{{Impacto}}</td></tr>
+      <tr><td>...</td><td>...</td><td>...</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 30px;">Esforço total P1: <strong>{{X-Y h}}</strong></p>
+</section>
+
+<!-- ============ SLIDE 10: PLANO P2 ============ -->
+<section data-background-color="#1a1814">
+  <h2 style="color: var(--r-accent-green);">P2 — Sprint-2+ (~60-90 dias)</h2>
+  <p style="opacity: 0.7;">Refinamento incremental</p>
+  <table>
+    <thead><tr><th>Ação</th><th>Esforço</th><th>Impacto</th></tr></thead>
+    <tbody>
+      <tr><td>{{P2.1}}</td><td>{{X-Y h}}</td><td>{{Impacto}}</td></tr>
+      <tr><td>...</td><td>...</td><td>...</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 30px;">Esforço total P2: <strong>{{X-Y h}}</strong></p>
+</section>
+
+<!-- ============ SLIDE 11: ROI ESPERADO ============ -->
+<section data-background-color="#1a1814">
+  <h2>ROI Esperado Pós-Remediação</h2>
+  <ul style="margin-top: 40px;">
+    <li><strong>LGPD compliance assegurada</strong> — risco multa R$ 50M evitado</li>
+    <li><strong>+{{X-Y%}}</strong> em atribuição Meta (EMQ alvo ≥7.0)</li>
+    <li><strong>+{{X-Y%}}</strong> em Enhanced Conversions Google Ads</li>
+    <li><strong>+{{X-Y%}}</strong> em deduplicação cross-event (CAPI server-side)</li>
+    <li><strong>Recovery Safari ITP</strong> — atribuição iOS restaurada 70-85%</li>
+    <li><strong>Smart Bidding otimizado</strong> — value-based bidding com signal limpo</li>
+  </ul>
+</section>
+
+<!-- ============ SLIDE 12: PRÓXIMOS PASSOS ============ -->
+<section data-background-color="#1a1814">
+  <h2 style="color: var(--r-accent-yellow);">Próximos Passos</h2>
+  <ol style="margin-top: 40px;">
+    <li><strong>Reunião 60 min</strong> — validação cliente-side dos achados</li>
+    <li><strong>Definição do caminho</strong>:
+      <ul style="margin-top: 10px;">
+        <li>Equipe interna técnica</li>
+        <li>Bundle V4 Growth IA Ops (Fundação completa ~90 dias)</li>
+        <li>Sprint pontual remediação P0+P1 (~30 dias)</li>
+      </ul>
+    </li>
+    <li><strong>Cronograma + responsabilidades</strong> documentados</li>
+  </ol>
+</section>
+
+<!-- ============ SLIDE 13: OBRIGADO ============ -->
+<section class="title-slide" data-background-color="#1a1814">
+  <h1 style="color: var(--r-accent-yellow);">Obrigado</h1>
+  <p style="font-size: 0.7em; opacity: 0.7; margin-top: 30px;">
+    {{nome_operador}} · {{data}}
+  </p>
+  <p style="font-size: 0.5em; opacity: 0.5; margin-top: 60px;">
+    Auditoria via <code>tracking-blackbox-auditor</code> v1.0.0 · Tese Growth IA Ops v2.0
+  </p>
+</section>
+
+</div>
+</div>
+
+<div class="footer">{{cliente}} · Diagnóstico de Tracking · {{data}}</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/markdown/markdown.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'fade',
+  controls: true,
+  progress: true,
+  center: false,
+  plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+});
+</script>
+
+</body>
+</html>
