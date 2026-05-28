@@ -1,0 +1,11 @@
+# Normalize line endings across OSes
+# Text files use LF in the repo (Linux/Mac/Web convention)
+* text=auto eol=lf
+
+# Binary files (skip line ending conversion)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

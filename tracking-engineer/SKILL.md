@@ -68,16 +68,41 @@ Se o handoff da IE declara `user.*` nos eventos, o JSON principal DEVE incluir u
 - **Enhanced Conversions Google Ads** — depende da variável UPD acima.
 - **GA4 User-Provided Data no Config tag** — depende da variável UPD acima.
 
-**Como tratar isso:**
-1. NÃO inclua variável `awsl` ou referências a UPD no JSON principal — vai falhar no import.
-2. Entregue o JSON principal SEM essas referências.
-3. Entregue um **doc de setup manual** (`enhanced_conversions_setup_manual.md`) com passo a passo de 3-5 min:
-   - Instalar Community Template "Google User-Provided Data" da Gallery
-   - Criar variável `UD | <Project> User Data` no UI com mapeamento `DLV | user.*`
-   - Editar tags Google Ads e GA4 Config pra ativar UPD e referenciar a variável
-4. Avise o operador de antemão: "Enhanced Conversions exige 5min manuais no UI por limitação técnica do GTM (UPD é Community Template). Está documentado no setup manual."
+**Como tratar isso (refinado após case Onco Import 2026-05-15):**
 
-**Anti-pattern:** prometer Enhanced Conversions automatizado via JSON sabendo que não funciona. Tentar `awsl` no JSON e o operador vai bater no erro de import. Falha de transparência.
+1. **NÃO inclua variável tipo `awsl` ou `cvt_<id>` no JSON** sem ter o `containerId` + `templateId` específico do operador — vai falhar com "Tipo de entidade desconhecido" no import.
+
+2. **PODE referenciar a variável UPD por NOME nas tags do JSON** — GTM resolve `{{UD | <Project> UPD}}` no momento da execução SE a variável existir no container. Isso permite Enhanced Conversions vir from-import sem hack:
+   ```json
+   { "type": "BOOLEAN", "key": "enableEnhancedConversions", "value": "true" },
+   { "type": "TEMPLATE", "key": "userDataVariable", "value": "{{UD | <Project> UPD}}" }
+   ```
+
+3. **SEMPRE inclua `Util | Empty` Custom JS Variable no JSON principal quando handoff declara user data:**
+   ```json
+   {
+     "name": "Util | Empty",
+     "type": "jsm",
+     "parameter": [{ "type": "TEMPLATE", "key": "javascript", "value": "function(){return undefined;}" }]
+   }
+   ```
+   Necessária porque UPD Community Template **não aceita "Não definido" em NENHUM campo** (mesmo opcionais como Rua/CEP). Sem `Util | Empty`, operador trava no save da UPD com erro `O valor não pode ficar vazio` em País/CEP. Detalhes em `gtm-config-reference.md` Seção 2.3.
+
+4. **Sequência manual pós-import (documentar em `enhanced_conversions_setup_manual.md`):**
+   - Operador instala Community Template "Google User-Provided Data" da Gallery (1 min)
+   - Operador importa o JSON (cria DLVs + Constants + UD Hash + `Util | Empty`)
+   - Operador cria variável `UD | <Project> UPD` mapeando DLVs reais nos campos com dado + `{{Util | Empty}}` nos campos sem DLV (Rua/CEP tipicamente)
+   - Operador faz Submit + Publish
+
+5. **Quando o operador puder exportar o container ATUAL com UPD template já instalado** (Admin → Export Container → Workspace), pedir o trecho `customTemplate[]` + `containerId` real → próxima iteração da skill gera variável UPD direto no JSON com tipo `cvt_<containerId>_<templateId>`, zero passo manual.
+
+6. **Avise o operador de antemão:** "Enhanced Conversions vem ATIVO from-import porque o JSON já referencia `{{UD | <Project> UPD}}` por nome. Você cria a variável UPD UMA VEZ no UI seguindo o setup manual (3 min). Próxima iteração da skill faz tudo via JSON se você exportar o container atual."
+
+**Anti-pattern 1:** prometer Enhanced Conversions e gerar JSON SEM `userDataVariable` referenciado nas tags GAds/GA4 Config — operador precisa editar 5+ tags manualmente pra ativar EC. Trabalho desnecessário.
+
+**Anti-pattern 2:** esquecer de incluir `Util | Empty` no JSON — operador trava no save da UPD e perde tempo debugando.
+
+**Anti-pattern 3:** prometer importação 100% automática SEM ter `containerId`/`templateId` reais do operador — tentar tipo `awsl` ou `cvt_xxx` placeholder gera erro de import imediato.
 
 Se o handoff NÃO declarar user data, registre como risco e sugira à IE adicionar.
 

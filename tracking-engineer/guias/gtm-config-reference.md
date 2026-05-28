@@ -142,6 +142,50 @@ Trigger: TRG | Custom Event | [EventoCanônico]
 > QA: valide no GA4 DebugView (ative via GTM Preview — o debug_mode é setado automaticamente).
 > Se Internal Traffic filter estiver ativo, eventos do DebugView não aparecem nos relatórios padrão — isso é comportamento esperado.
 
+**Pegadinha CRÍTICA — campo `measurementId` virou `measurementIdOverride` no GA4 Event tag (gaawe) pós-Google Tag (2024+):**
+
+No JSON v2 export, GA4 Event tags antigas usavam:
+```json
+{ "type": "TAG_REFERENCE", "key": "measurementId", "value": "TAG | GA4 | Configuration" }
+```
+
+Esse formato **falha no import** com 2 erros sequenciais:
+1. Primeiro erro: `vendorTemplate.parameter.measurementIdOverride: O valor não pode ficar vazio` — campo renomeado, GTM espera presente.
+2. Trocar `measurementId` por `measurementIdOverride` mantendo TAG_REFERENCE → segundo erro: `Insira um código de métrica válido, por exemplo, G-1234` — `measurementIdOverride` aceita SÓ TEMPLATE com measurement ID literal, NÃO TAG_REFERENCE.
+
+**Pattern correto pra GA4 Event tag (gaawe) gerar JSON importável:**
+```json
+{ "type": "TEMPLATE", "key": "measurementIdOverride", "value": "{{[EDIT] Perma | GA4 ID}}" }
+```
+
+Sem `measurementId` (campo antigo), sem TAG_REFERENCE pra Config tag. Funcionalmente nada se perde — a Google Tag (gaawc) carrega gtag.js em All Pages, configura User-ID/client_id/UPD globalmente, e qualquer GA4 Event tag herda via gtag global. A relação visual de "depende de Config tag" some no UI mas execução funciona perfeito.
+
+**Pegadinha — Built-in Variables no JSON usam UPPER_SNAKE_CASE, não camelCase:**
+
+Errado (gera `Error deserializing enum type [BuiltInVariableType]. Unrecognized value [pageUrl]`):
+```json
+{ "type": "pageUrl", "name": "Page URL" }
+```
+
+Correto:
+```json
+{ "type": "PAGE_URL", "name": "Page URL" }
+```
+
+Lista completa: `PAGE_URL`, `PAGE_PATH`, `PAGE_HOSTNAME`, `PAGE_TITLE`, `REFERRER`, `EVENT`, `CLICK_ELEMENT`, `CLICK_CLASSES`, `CLICK_ID`, `CLICK_TARGET`, `CLICK_URL`, `CLICK_TEXT`, `FORM_ELEMENT`, `FORM_ID`, `FORM_CLASSES`, `FORM_TEXT`, `FORM_URL`, `RANDOM_NUMBER`, `HISTORY_SOURCE`, `NEW_HISTORY_FRAGMENT`, `OLD_HISTORY_FRAGMENT`. (A API REST retorna camelCase em GET; mas import JSON exige UPPER_SNAKE_CASE. Inconsistência interna do GTM.)
+
+**Pegadinha — caminho real da Identidade de relatórios no GA4 (pós-redesign 2024):**
+
+Setup manual obrigatório pra User-ID funcionar como reporting identity. Caminho NÃO é Admin top-level direto:
+
+> GA4 → Admin → Configurações da propriedade → **Exibição de dados** → Identidade de relatórios → escolher **Híbrida** (User-ID + Device-based + Modeling)
+
+Mesma lógica pra outros painéis movidos pra "Exibição de dados" no redesign 2024:
+- **Custom Definitions:** Admin → Configurações da propriedade → Exibição de dados → Definições personalizadas
+- **DebugView:** Admin → Configurações da propriedade → Exibição de dados → DebugView
+
+Operador procurando "Identidade do relatório" no Admin top-level encontra só artigos de Help do header (ícone `?`) e perde 5 min. Sempre dar caminho completo com subnível "Exibição de dados" em instruções pós-publish.
+
 ---
 
 ### 2.2 Meta Pixel — Browser Tag
@@ -363,6 +407,35 @@ Trigger: TRG | Custom Event | [EventoCanônico]
 > **NÃO tente incluir `enableEnhancedConversions: true` + `userDataVariable: {{UD | ...}}` no JSON.** A variável referenciada (`awsl`) não é importável. Sempre falha com "Tipo de entidade desconhecido". Documentar o setup manual é o único caminho honesto.
 >
 > QA: verifique em Google Ads → Conversões → aba "Enhanced Conversions" — status "Recording user-provided data" ou similar.
+
+**Pegadinha CRÍTICA — UPD Community Template NÃO aceita "Não definido" em NENHUM campo (mesmo opcionais):**
+
+Tentar deixar campos visualmente opcionais (Rua, Cidade, CEP, País, Região) como "Não definido" gera erro `O valor não pode ficar vazio` em País e CEP no momento do save — bloqueando a configuração. Validation interna do template Community do Google: se Email/Telefone/Nome estão preenchidos, TODOS os campos da seção endereço viram required pra consistência.
+
+**Solução defensiva — sempre incluir variável `Util | Empty` (Custom JS) no JSON principal:**
+
+```json
+{
+  "variableId": "999",
+  "name": "Util | Empty",
+  "type": "jsm",
+  "parameter": [{ "type": "TEMPLATE", "key": "javascript", "value": "function(){return undefined;}" }]
+}
+```
+
+Quando criar a variável UPD manualmente, mapear `{{Util | Empty}}` em todos os campos endereço sem DLV correspondente (Rua, CEP, etc.). Em runtime retorna `undefined` → UPD não envia esses campos pro Google → equivalente funcional a "Não definido", mas passa o validator do template.
+
+Esta variável virou **utility padrão obrigatória** no JSON gerado pela skill — incluir SEMPRE quando o handoff declara user data, mesmo que apenas alguns campos UPD vão usar.
+
+**Sequência de setup manual robusta (refinada após case Onco Import 2026-05-15):**
+
+1. Operador instala Community Template "Google User-Provided Data" da Gallery (1 min)
+2. Operador importa o JSON principal (cria DLVs + Constants + UD Hash + `Util | Empty`)
+3. Operador cria variável `UD | <Project> UPD` mapeando:
+   - **Email/Telefone/Nome/Sobrenome:** DLVs reais
+   - **Cidade/Região/País:** DLVs reais SE main.js captura, senão `{{Util | Empty}}`
+   - **Rua/CEP:** quase sempre `{{Util | Empty}}` (raros forms capturam)
+4. Save → Submit → Publish
 
 ---
 
