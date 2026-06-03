@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "tracking-skills-marketplace",
+  "description": "Marketplace do plugin tracking-skills (instrumentation-engineer, tracking-engineer, tracking-blackbox-auditor).",
+  "owner": {
+    "name": "matlenc"
+  },
+  "plugins": [
+    {
+      "name": "tracking-skills",
+      "description": "Ciclo completo de tracking/mensuração em mídia paga: origem do dado, GTM/N8N + QA, e auditoria black-box via Playwright. pt-BR.",
+      "category": "marketing",
+      "source": ".",
+      "homepage": "https://github.com/matlenc/tracking-skills-v1"
+    }
+  ]
+}

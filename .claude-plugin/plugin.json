@@ -1,0 +1,10 @@
+{
+  "name": "tracking-skills",
+  "description": "Ciclo completo de tracking/mensuração em mídia paga: instrumentation-engineer (origem do dado), tracking-engineer (GTM/N8N + QA) e tracking-blackbox-auditor (auditoria Playwright de alvo externo). pt-BR.",
+  "version": "1.0.0",
+  "author": {
+    "name": "matlenc",
+    "url": "https://github.com/matlenc/tracking-skills-v1"
+  },
+  "homepage": "https://github.com/matlenc/tracking-skills-v1"
+}
